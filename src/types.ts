@@ -1,0 +1,299 @@
+// ─── Configuration ───────────────────────────────────────────────
+
+export interface AbrovaChatConfig {
+  /** Your Abrova API key */
+  apiKey: string;
+  /** Your Abrova server secret — required for server-side operations */
+  serverSecret: string;
+  /**
+   * Base URL of the Abrova Chat API (optional). Defaults to
+   * `https://chat.abrova.ir`. Must use `https://`; plain `http://` is
+   * accepted only for `localhost` and `127.0.0.1`.
+   */
+  baseUrl?: string;
+}
+
+// ─── Enums / Literal Types ──────────────────────────────────────
+
+export type RoomType = 'direct' | 'group';
+export type ParticipantRole = 'admin' | 'member';
+export type MessageType = 'text' | 'image' | 'file' | 'system';
+
+// ─── Attachment ─────────────────────────────────────────────────
+
+export interface Attachment {
+  url: string;
+  mimeType: string;
+  name: string;
+  size: number;
+}
+
+// ─── Participant ────────────────────────────────────────────────
+
+export interface Participant {
+  id: string;
+  roomId: string;
+  externalUserId: string;
+  displayName?: string;
+  locale?: string;
+  role: ParticipantRole;
+  lastReadAt?: string;
+  joinedAt: string;
+}
+
+// ─── Room ───────────────────────────────────────────────────────
+
+export interface Room {
+  id: string;
+  appId: string;
+  type: RoomType;
+  externalId?: string;
+  name?: string;
+  metadata?: Record<string, any>;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  participants?: Participant[];
+  /**
+   * The most recent message in the room, or null when there are none. Sent by
+   * `GET /rooms`, so a chat list can show a preview without loading each
+   * room's messages.
+   */
+  lastMessage?: Message | null;
+  /**
+   * Messages from other people that arrived after this user last read the
+   * room. Sent by `GET /rooms`; 0 when everything has been read.
+   */
+  unreadCount?: number;
+}
+
+// ─── Message ────────────────────────────────────────────────────
+
+export interface Message {
+  id: string;
+  /** The `clientMessageId` the message was sent with, if any. */
+  clientMessageId?: string | null;
+  roomId: string;
+  senderUserId: string;
+  type: MessageType;
+  content: string;
+  attachments?: Attachment[];
+  metadata?: Record<string, any>;
+  replyToId?: string;
+  replyTo?: Message;
+  isDeleted: boolean;
+  isEdited: boolean;
+  editedAt?: string;
+  editHistory?: { content: string; editedAt: string }[];
+  isPinned: boolean;
+  pinnedAt?: string;
+  pinnedBy?: string;
+  createdAt: string;
+  reactions?: Reaction[];
+}
+
+// ─── Reaction ───────────────────────────────────────────────────
+
+export interface Reaction {
+  id: string;
+  messageId: string;
+  userId: string;
+  emoji: string;
+  createdAt: string;
+}
+
+// ─── Mention ────────────────────────────────────────────────────
+
+export interface Mention {
+  id: string;
+  messageId: string;
+  mentionedUserId: string;
+  roomId: string;
+  createdAt: string;
+  message: Message;
+}
+
+// ─── Paginated Messages ─────────────────────────────────────────
+
+export interface PaginatedMessages {
+  messages: Message[];
+  hasMore: boolean;
+}
+
+// ─── Search Result ──────────────────────────────────────────────
+
+export interface SearchResult {
+  messages: Message[];
+  total: number;
+}
+
+// ─── Unread Summary ─────────────────────────────────────────────
+
+export interface RoomUnread {
+  roomId: string;
+  unreadCount: number;
+}
+
+export interface UnreadSummary {
+  totalUnread: number;
+  rooms: RoomUnread[];
+}
+
+// ─── Webhook / Push Config ──────────────────────────────────────
+
+export interface EventPushConfig {
+  templateId?: string;
+  title?: string;
+  body?: string;
+  skip?: boolean;
+}
+
+export interface PushTemplates {
+  new_message?: EventPushConfig;
+  mention?: EventPushConfig;
+  reaction?: EventPushConfig;
+  room_created?: EventPushConfig;
+  participant_joined?: EventPushConfig;
+  file_shared?: EventPushConfig;
+  message_pinned?: EventPushConfig;
+}
+
+export interface WebhookConfig {
+  webhookUrl: string | null;
+  hasSecret: boolean;
+  pushTemplateId: string | null;
+  pushTemplates: PushTemplates | null;
+}
+
+// ─── Request Option Interfaces ──────────────────────────────────
+
+export interface ParticipantInput {
+  externalUserId: string;
+  displayName?: string;
+  locale?: string;
+  role?: ParticipantRole;
+}
+
+export interface CreateRoomOptions {
+  type?: RoomType;
+  externalId?: string;
+  name?: string;
+  participants: ParticipantInput[];
+  metadata?: Record<string, any>;
+}
+
+/**
+ * What `POST /rooms/find-or-create` returns: the room, and whether this call
+ * is what created it.
+ *
+ * `created` is worth having - it tells you when to seed a first message or a
+ * welcome, without a second lookup.
+ */
+export interface FindOrCreateRoomResult {
+  room: Room;
+  created: boolean;
+}
+
+export interface AddParticipantOptions {
+  externalUserId: string;
+  displayName?: string;
+  locale?: string;
+  role?: ParticipantRole;
+}
+
+export interface SendMessageOptions {
+  senderUserId: string;
+  content: string;
+  type?: MessageType;
+  attachments?: Attachment[];
+  metadata?: Record<string, any>;
+  replyToId?: string;
+  /**
+   * Your own id for this send (1-64 characters: letters, digits, `_`, `-`). Sending again with the same id for the
+   * same room and sender returns the message stored the first time instead of storing it twice, so a send can be
+   * retried safely after a timeout.
+   */
+  clientMessageId?: string;
+}
+
+export interface GetHistoryOptions {
+  userId: string;
+  limit?: number;
+  before?: string;
+}
+
+export interface SearchMessagesOptions {
+  q: string;
+  userId: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface GetMentionsOptions {
+  userId: string;
+  limit?: number;
+}
+
+export interface SetWebhookOptions {
+  url: string;
+  secret?: string;
+}
+
+export interface GetTokenOptions {
+  userId: string;
+  info?: Record<string, any>;
+}
+
+// ─── User tokens ────────────────────────────────────────────────
+
+export interface CreateUserTokenOptions {
+  /** Your own id for the user the token is for. */
+  userId: string;
+  /** Public connection info (e.g. displayName) visible to the realtime layer. */
+  info?: Record<string, any>;
+  /** Lifetime in seconds. Default 3600 (1 h), max 86400 (24 h). */
+  ttl?: number;
+}
+
+export interface UserToken {
+  /** Hand this to the client SDK's tokenProvider. */
+  token: string;
+  /** ISO timestamp; the client SDKs refresh shortly before it. */
+  expiresAt: string;
+  userId: string;
+}
+
+export interface RevokeTokensResult {
+  /** Tokens issued at or before this moment are no longer accepted. */
+  revokedBefore: string;
+}
+
+// ─── Notification settings ───
+
+/** `all` (default), `mentions` (only when mentioned) or `none` (no chat pushes). */
+export type PushLevel = 'all' | 'mentions' | 'none';
+
+export interface NotificationSettings {
+  userId: string;
+  /** `app` for the user's app-wide settings, `room` for one room. */
+  scope: 'app' | 'room';
+  roomId?: string;
+  pushLevel: PushLevel;
+  /** ISO timestamp; no chat pushes until then. */
+  mutedUntil: string | null;
+  /** Push event types turned off, e.g. `reaction`. */
+  disabledEvents: string[];
+  updatedAt: string | null;
+}
+
+/** Only the fields you pass are changed. */
+export interface UpdateNotificationSettingsOptions {
+  pushLevel?: PushLevel;
+  /** A Date or ISO string to mute until; `null` unmutes. */
+  mutedUntil?: Date | string | null;
+  /**
+   * Event types to turn off: new_message, file_shared, mention, reaction,
+   * message_pinned, room_created, participant_joined, participant_removed.
+   */
+  disabledEvents?: string[];
+}
